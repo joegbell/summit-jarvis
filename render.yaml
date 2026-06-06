@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: summit-jarvis
+    env: node
+    branch: main
+    buildCommand: npm install
+    startCommand: node server.js
+    plan: free
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: PORT
+        value: 3001

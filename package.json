@@ -1,0 +1,14 @@
+{
+  "name": "summit-jarvis",
+  "version": "1.0.0",
+  "description": "Summit J.A.R.V.I.S. Voice AI Assistant",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "ws": "^8.18.0"
+  }
+}
