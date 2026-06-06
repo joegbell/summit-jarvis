@@ -66,7 +66,8 @@ wss.on('connection', async (browserWs) => {
       }));
     });
 
-    let responseInProgress = false;
+    let openaiReady = false;
+    let messageQueue = [];
 
     openaiWs.on('message', (raw) => {
       const data = JSON.parse(raw.toString());
@@ -78,24 +79,39 @@ wss.on('connection', async (browserWs) => {
       } else if (data.type === 'response.text.delta') {
         browserWs.send(JSON.stringify({ type: 'text', delta: data.delta }));
       } else if (data.type === 'response.done') {
-        responseInProgress = false;
+        /* response complete */
       } else if (data.type === 'error') {
         console.error('OpenAI error:', data);
         browserWs.send(JSON.stringify({ type: 'error', message: data.error?.message || 'Unknown error' }));
       }
     });
 
+    openaiWs.on('open', () => {
+      openaiReady = true;
+      // Flush queued messages
+      for (const msg of messageQueue) {
+        openaiWs.send(JSON.stringify(msg));
+      }
+      messageQueue = [];
+    });
+
+    function sendToOpenAI(type, payload) {
+      const msg = { type, ...payload };
+      if (openaiReady && openaiWs.readyState === 1) {
+        openaiWs.send(JSON.stringify(msg));
+      } else {
+        messageQueue.push(msg);
+      }
+    }
+
     browserWs.on('message', (raw) => {
       const data = JSON.parse(raw.toString());
 
       if (data.type === 'audio') {
-        openaiWs.send(JSON.stringify({
-          type: 'input_audio_buffer.append',
-          audio: data.delta
-        }));
+        sendToOpenAI('input_audio_buffer.append', { audio: data.delta });
       } else if (data.type === 'audio_done') {
-        openaiWs.send(JSON.stringify({ type: 'input_audio_buffer.commit' }));
-        openaiWs.send(JSON.stringify({ type: 'response.create', response: { modalities: ['text', 'audio'] } }));
+        sendToOpenAI('input_audio_buffer.commit', {});
+        sendToOpenAI('response.create', { response: { modalities: ['text', 'audio'] } });
       } else if (data.type === 'ping') {
         browserWs.send(JSON.stringify({ type: 'pong' }));
       }
