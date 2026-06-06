@@ -18,7 +18,7 @@ const wss = new WebSocket.Server({ server });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-const OPENAI_WS = 'wss://api.openai.com/v1/realtime';
+const OPENAI_WS = 'wss://api.openai.com/v1/realtime?model=gpt-realtime-1.5';
 
 const SYSTEM_PROMPT = process.env.SYSTEM_PROMPT || `You are "Summit" — an AI assistant for the user's business and daily life.
 
