@@ -18,7 +18,7 @@ const wss = new WebSocket.Server({ server });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-const OPENAI_WS = 'wss://api.openai.com/v1/realtime?model=gpt-4o-mini-realtime-preview';
+const OPENAI_WS = 'wss://api.openai.com/v1/realtime';
 
 const SYSTEM_PROMPT = process.env.SYSTEM_PROMPT || `You are "Summit" — an AI assistant for the user's business and daily life.
 
@@ -52,7 +52,8 @@ wss.on('connection', async (browserWs) => {
         type: 'session.update',
         session: {
           instructions: SYSTEM_PROMPT,
-          modalities: ['text', 'audio'],
+              model: 'gpt-4o-mini-realtime-preview',
+              modalities: ['text', 'audio'],
           voice: 'alloy',
           input_audio_format: 'pcm16',
           output_audio_format: 'pcm16',
