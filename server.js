@@ -41,8 +41,7 @@ wss.on('connection', async (browserWs) => {
   try {
     const openaiWs = new WebSocket(OPENAI_WS, {
       headers: {
-        'Authorization': `Bearer ${OPENAI_KEY}`,
-        'OpenAI-Beta': 'realtime=v1'
+        'Authorization': `Bearer ${OPENAI_KEY}`
       }
     });
 
