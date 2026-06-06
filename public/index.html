@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#f59e0b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <title>Summit J.A.R.V.I.S.</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+      background: #0a0a1a;
+      color: #e0e0e0;
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .container {
+      height: 100vh; height: 100dvh;
+      display: flex; flex-direction: column;
+      padding: 20px;
+      position: relative;
+    }
+
+    /* === HUD Header === */
+    .hud-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(245, 158, 11, 0.15);
+    }
+    .hud-title {
+      font-size: 14px; font-weight: 600; letter-spacing: 2px;
+      text-transform: uppercase;
+      background: linear-gradient(90deg, #f59e0b, #eab308);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .hud-status {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px; color: #666;
+    }
+    .hud-dot { width: 6px; height: 6px; border-radius: 50%; background: #f59e0b; }
+    .hud-dot.connected { background: #22c55e; box-shadow: 0 0 8px rgba(34,197,94,0.5); animation: pulse-dot 2s infinite; }
+    .hud-dot.listening { background: #ef4444; box-shadow: 0 0 12px rgba(239,68,68,0.6); animation: pulse-dot 0.8s infinite; }
+    .hud-dot.thinking { background: #f59e0b; box-shadow: 0 0 12px rgba(245,158,11,0.6); animation: pulse-dot 0.5s infinite; }
+    @keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    /* === Transcript / Conversation === */
+    .conversation {
+      flex: 1; overflow-y: auto;
+      margin: 12px -4px;
+      padding: 8px 4px;
+      scroll-behavior: smooth;
+    }
+    .conversation::-webkit-scrollbar { width: 3px; }
+    .conversation::-webkit-scrollbar-track { background: transparent; }
+    .conversation::-webkit-scrollbar-thumb { background: rgba(245,158,11,0.3); border-radius: 3px; }
+
+    .msg { margin-bottom: 12px; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .msg-user { text-align: right; }
+    .msg-summit { text-align: left; }
+    .msg-bubble {
+      display: inline-block; max-width: 85%;
+      padding: 10px 14px; border-radius: 14px;
+      font-size: 14px; line-height: 1.5;
+      text-align: left;
+    }
+    .msg-user .msg-bubble {
+      background: linear-gradient(135deg, #1e3a5f, #1a365d);
+      color: #c8d8e8;
+      border-bottom-right-radius: 4px;
+    }
+    .msg-summit .msg-bubble {
+      background: rgba(245, 158, 11, 0.08);
+      border: 1px solid rgba(245, 158, 11, 0.15);
+      color: #d4d4d4;
+      border-bottom-left-radius: 4px;
+    }
+    .msg-label {
+      font-size: 10px; color: #555; margin-bottom: 3px; letter-spacing: 1px;
+    }
+    .typing .msg-bubble::after {
+      content: '⏺'; animation: blink 1s step-end infinite;
+      display: inline-block; margin-left: 4px; font-size: 12px;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* === Voice Button === */
+    .voice-section {
+      display: flex; flex-direction: column; align-items: center;
+      padding: 16px 0 8px;
+      position: relative;
+    }
+
+    .voice-btn {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      border: none;
+      background: linear-gradient(135deg, #1a1a3e, #0f0f2e);
+      cursor: pointer;
+      position: relative;
+      transition: all 0.2s;
+      box-shadow: 0 0 30px rgba(245,158,11,0.1);
+    }
+    .voice-btn:active { transform: scale(0.95); }
+    .voice-btn.active {
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      box-shadow: 0 0 60px rgba(245,158,11,0.3);
+    }
+    .voice-btn .icon { font-size: 32px; transition: all 0.2s; }
+    .voice-btn.active .icon { animation: pulse-icon 0.8s infinite; }
+    @keyframes pulse-icon { 0%,100% { transform: scale(1); } 50% { transform: scale(1.1); } }
+
+    /* === Rings === */
+    .rings { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); pointer-events: none; }
+    .rings .ring {
+      position: absolute; top: 50%; left: 50%;
+      width: 120px; height: 120px; margin: -60px;
+      border-radius: 50%;
+      border: 1px solid rgba(245,158,11,0.2);
+      animation: ring-expand 2s ease-out infinite;
+      opacity: 0;
+    }
+    .rings .ring:nth-child(2) { animation-delay: 0.6s; }
+    .rings .ring:nth-child(3) { animation-delay: 1.2s; }
+    @keyframes ring-expand {
+      0% { transform: scale(0.5); opacity: 0.4; }
+      100% { transform: scale(2); opacity: 0; }
+    }
+    .rings.active .ring { display: block; }
+
+    .voice-hint {
+      margin-top: 12px;
+      font-size: 12px; color: #555; letter-spacing: 1px;
+      transition: all 0.3s;
+    }
+    .voice-hint.listening { color: #f59e0b; }
+    .voice-hint.thinking { color: #eab308; animation: pulse-text 0.8s infinite; }
+    @keyframes pulse-text { 0%,100% { opacity: 0.6; } 50% { opacity: 1; } }
+
+    /* === Hands-free toggle === */
+    .hf-toggle {
+      display: flex; align-items: center; gap: 8px;
+      margin-top: 8px; font-size: 11px; color: #555;
+    }
+    .hf-toggle input[type="checkbox"] {
+      appearance: none; width: 36px; height: 20px;
+      background: #1a1a3e; border-radius: 10px;
+      border: 1px solid #333; cursor: pointer;
+      position: relative; transition: all 0.3s;
+    }
+    .hf-toggle input:checked { background: #1e3a5f; border-color: #f59e0b; }
+    .hf-toggle input::after {
+      content: ''; position: absolute; top: 1px; left: 1px;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #555; transition: all 0.3s;
+    }
+    .hf-toggle input:checked::after {
+      left: 17px; background: #f59e0b;
+    }
+
+    /* === VAD Visualizer === */
+    .vad-bar {
+      width: 100%; height: 2px;
+      background: rgba(245,158,11,0.1);
+      border-radius: 2px; overflow: hidden;
+      margin-top: 12px;
+    }
+    .vad-bar-inner {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, #f59e0b, #eab308, #f59e0b);
+      transition: width 0.1s;
+      border-radius: 2px;
+    }
+
+    /* === Safe area for iOS === */
+    @supports (padding-top: env(safe-area-inset-top)) {
+      .container { padding-top: calc(20px + env(safe-area-inset-top)); padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+    }
+
+    @media (min-width: 768px) {
+      .container { max-width: 480px; margin: 0 auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- HUD Header -->
+    <div class="hud-header">
+      <span class="hud-title">⛰ SUMMIT // J.A.R.V.I.S.</span>
+      <div class="hud-status">
+        <span class="hud-dot" id="statusDot"></span>
+        <span id="statusText">Initializing</span>
+      </div>
+    </div>
+
+    <!-- Conversation -->
+    <div class="conversation" id="conversation">
+      <div class="msg msg-summit">
+        <div class="msg-label">SUMMIT</div>
+        <div class="msg-bubble">Good to see you, sir. Tap the button or enable hands-free mode to speak with me.</div>
+      </div>
+    </div>
+
+    <!-- Voice Section -->
+    <div class="voice-section">
+      <div style="position:relative;display:inline-block">
+        <button class="voice-btn" id="voiceBtn">
+          <span class="icon">🎤</span>
+        </button>
+        <div class="rings" id="rings">
+          <div class="ring"></div>
+          <div class="ring"></div>
+          <div class="ring"></div>
+        </div>
+      </div>
+      <div class="voice-hint" id="voiceHint">Hold to talk · Tap to stop</div>
+
+      <div class="hf-toggle">
+        <input type="checkbox" id="handsFreeToggle">
+        <label for="handsFreeToggle">Hands-free mode</label>
+      </div>
+
+      <div class="vad-bar"><div class="vad-bar-inner" id="vadLevel"></div></div>
+    </div>
+  </div>
+
+  <script>
+    const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
+    let ws = null, audioCtx = null, stream = null;
+    let isRecording = false, isPlaying = false;
+    let audioQueue = [];
+    let isHandsFree = false;
+    let handsFreeTimeout = null;
+    let reconnectTimer = null;
+
+    // Audio playback with PCM16 -> AudioBuffer
+    function initAudioContext() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function playPCM16(base64Data) {
+      initAudioContext();
+      try {
+        const binary = atob(base64Data);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const pcm16 = new Int16Array(bytes.buffer);
+        const float32 = new Float32Array(pcm16.length);
+        for (let i = 0; i < pcm16.length; i++) float32[i] = pcm16[i] / 32768;
+        const buf = audioCtx.createBuffer(1, float32.length, 24000);
+        buf.getChannelData(0).set(float32);
+        const src = audioCtx.createBufferSource();
+        src.buffer = buf;
+        src.connect(audioCtx.destination);
+        src.onended = () => { isPlaying = false; playNext(); };
+        src.start();
+        isPlaying = true;
+      } catch(e) { isPlaying = false; playNext(); }
+    }
+
+    function playNext() {
+      if (audioQueue.length === 0) { isPlaying = false; return; }
+      playPCM16(audioQueue.shift());
+    }
+
+    // DOM refs
+    const voiceBtn = document.getElementById('voiceBtn');
+    const voiceHint = document.getElementById('voiceHint');
+    const conversation = document.getElementById('conversation');
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const rings = document.getElementById('rings');
+    const vadLevel = document.getElementById('vadLevel');
+    const handsFreeToggle = document.getElementById('handsFreeToggle');
+
+    function setStatus(state, text) {
+      statusDot.className = 'hud-dot ' + state;
+      statusText.textContent = text;
+    }
+
+    function addMessage(text, isUser) {
+      const div = document.createElement('div');
+      div.className = `msg msg-${isUser ? 'user' : 'summit'}`;
+      div.innerHTML = `<div class="msg-label">${isUser ? 'YOU' : 'SUMMIT'}</div><div class="msg-bubble">${text}</div>`;
+      conversation.appendChild(div);
+      conversation.scrollTop = conversation.scrollHeight;
+    }
+
+    let partialText = '';
+    function appendTranscript(text) {
+      partialText += text;
+      let lastMsg = conversation.lastElementChild;
+      if (!lastMsg || lastMsg.classList.contains('msg-user')) {
+        const div = document.createElement('div');
+        div.className = 'msg msg-summit typing';
+        div.innerHTML = '<div class="msg-label">SUMMIT</div><div class="msg-bubble">' + partialText + '</div>';
+        conversation.appendChild(div);
+      } else {
+        lastMsg.querySelector('.msg-bubble').textContent = partialText;
+        lastMsg.classList.remove('typing');
+      }
+      conversation.scrollTop = conversation.scrollHeight;
+    }
+
+    function finalizeTranscript() {
+      partialText = '';
+      const lastMsg = conversation.lastElementChild;
+      if (lastMsg) lastMsg.classList.remove('typing');
+    }
+
+    function setVADLevel(level) {
+      vadLevel.style.width = Math.min(100, level * 100) + '%';
+    }
+
+    // WebSocket
+    function connect() {
+      if (ws && ws.readyState === WebSocket.OPEN) return;
+      ws = new WebSocket(WS_URL);
+      ws.onopen = () => {
+        setStatus('connected', 'Connected');
+        voiceHint.textContent = 'Hold to talk';
+        voiceBtn.disabled = false;
+      };
+      ws.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        if (data.type === 'audio') {
+          audioQueue.push(data.delta);
+          if (!isPlaying) playNext();
+          setStatus('thinking', 'Summit speaking...');
+          voiceHint.textContent = 'Summit is responding...';
+        } else if (data.type === 'audio_done') {
+          setStatus('connected', 'Connected');
+          voiceHint.textContent = isHandsFree ? 'Listening...' : 'Hold to talk';
+          finalizeTranscript();
+        } else if (data.type === 'text') {
+          appendTranscript(data.delta);
+        } else if (data.type === 'pong') {
+          // keepalive
+        } else if (data.type === 'error') {
+          console.error('WS error:', data.message);
+          setStatus('connected', 'Error');
+          voiceHint.textContent = 'Error: ' + data.message;
+        }
+      };
+      ws.onclose = () => {
+        setStatus('', 'Reconnecting...');
+        voiceHint.textContent = 'Connection lost. Reconnecting...';
+        voiceBtn.disabled = true;
+        if (!reconnectTimer) reconnectTimer = setTimeout(() => { reconnectTimer = null; connect(); }, 2000);
+      };
+      ws.onerror = () => ws.close();
+    }
+
+    // Audio capture and send
+    async function startRecording() {
+      if (isRecording) return;
+      initAudioContext();
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: { sampleRate: 24000, channelCount: 1, echoCancellation: true, noiseSuppression: true }
+        });
+        const src = audioCtx.createMediaStreamSource(stream);
+        const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+
+        processor.onaudioprocess = (e) => {
+          if (ws?.readyState !== WebSocket.OPEN) return;
+          const input = e.inputBuffer.getChannelData(0);
+          // Calculate energy for VAD visualization
+          let energy = 0;
+          for (let i = 0; i < input.length; i++) energy += input[i] * input[i];
+          energy = Math.sqrt(energy / input.length);
+          setVADLevel(energy * 3);
+
+          const pcm16 = new Int16Array(input.length);
+          for (let i = 0; i < input.length; i++) pcm16[i] = Math.max(-32768, Math.min(32767, input[i] * 32768));
+          const base64 = btoa(String.fromCharCode(...new Uint8Array(pcm16.buffer)));
+          ws.send(JSON.stringify({ type: 'audio', delta: base64 }));
+        };
+
+        src.connect(processor);
+        processor.connect(audioCtx.destination);
+        isRecording = true;
+        return true;
+      } catch (err) {
+        voiceHint.textContent = '❌ Mic access denied';
+        return false;
+      }
+    }
+
+    function stopRecording() {
+      if (!isRecording) return;
+      if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+      isRecording = false;
+      setVADLevel(0);
+      if (ws?.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'audio_done' }));
+      }
+      setStatus('thinking', 'Processing...');
+      voiceHint.textContent = 'Thinking...';
+    }
+
+    // Button events
+    voiceBtn.addEventListener('pointerdown', async (e) => {
+      e.preventDefault();
+      if (isHandsFree) return; // ignore button in hands-free mode
+      voiceBtn.classList.add('active');
+      voiceBtn.querySelector('.icon').textContent = '🔴';
+      rings.classList.add('active');
+      voiceHint.textContent = 'Listening...';
+      setStatus('listening', 'Listening');
+      await startRecording();
+    });
+
+    voiceBtn.addEventListener('pointerup', () => {
+      if (isHandsFree) return;
+      voiceBtn.classList.remove('active');
+      voiceBtn.querySelector('.icon').textContent = '🎤';
+      rings.classList.remove('active');
+      stopRecording();
+    });
+
+    voiceBtn.addEventListener('pointerleave', () => {
+      if (isRecording && !isHandsFree) {
+        voiceBtn.classList.remove('active');
+        voiceBtn.querySelector('.icon').textContent = '🎤';
+        rings.classList.remove('active');
+        stopRecording();
+      }
+    });
+
+    // Hands-free mode
+    handsFreeToggle.addEventListener('change', async () => {
+      isHandsFree = handsFreeToggle.checked;
+      if (isHandsFree) {
+        voiceHint.textContent = 'Hands-free: Speak anytime';
+        voiceBtn.querySelector('.icon').textContent = '🎙️';
+        rings.classList.add('active');
+        setStatus('connected', 'Hands-free');
+        await startRecording();
+      } else {
+        voiceHint.textContent = 'Hold to talk';
+        voiceBtn.querySelector('.icon').textContent = '🎤';
+        rings.classList.remove('active');
+        if (isRecording) stopRecording();
+      }
+    });
+
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js');
+    }
+
+    // Start connection
+    connect();
+
+    // Keepalive ping
+    setInterval(() => {
+      if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ping' }));
+    }, 30000);
+  </script>
+</body>
+</html>
