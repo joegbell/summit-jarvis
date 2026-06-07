@@ -46,18 +46,17 @@ wss.on('connection', (ws, req) => {
         console.log('💬 Agent response received');
       }
       if (data.type === 'agent_initiated') {
-        console.log('🤖 Agent initiated message:', data.text?.substring(0, 60));
-        // Convert agent's text to speech using British male voice and push to browser
+        console.log('🤖 Agent initiated:', data.text?.substring(0, 50));
         try {
+          // Use OpenAI TTS with WAV format, strip header to get raw PCM16
           const ttsResp = await fetch('https://api.openai.com/v1/audio/speech', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${OPENAI_KEY}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: 'gpt-4o-mini-tts', input: data.text, voice: 'echo', response_format: 'pcm16' })
+            body: JSON.stringify({ model: 'tts-1', input: data.text, voice: 'echo', response_format: 'wav' })
           });
           if (ttsResp.ok) {
-            const audioBuffer = await ttsResp.arrayBuffer();
-            const base64 = Buffer.from(audioBuffer).toString('base64');
-            // Broadcast to all browser connections
+            const buf = Buffer.from(await ttsResp.arrayBuffer());
+            const base64 = buf.toString('base64'); // Send full WAV with header for browser decodeAudioData
             wss.clients.forEach(client => {
               if (client !== ws && client.readyState === WebSocket.OPEN) {
                 client.send(JSON.stringify({ type: 'text', delta: data.text }));
@@ -65,6 +64,10 @@ wss.on('connection', (ws, req) => {
                 client.send(JSON.stringify({ type: 'audio_done' }));
               }
             });
+            console.log('🔊 Spoken to browser');
+          } else {
+            const errText = await ttsResp.text();
+            console.error('TTS API error:', errText.substring(0, 200));
           }
         } catch(e) { console.error('TTS error:', e.message); }
       }
