@@ -132,19 +132,21 @@ wss.on('connection', (ws, req) => {
     } else if (data.type === 'audio_done') {
       sendToOpenAI({ type: 'input_audio_buffer.commit' });
 
-      // Also forward transcript to connected agent if available
+      // Forward transcript to connected agent
       if (agentWs && agentWs.readyState === 1) {
         agentWs.send(JSON.stringify({
           type: 'user_query',
           text: userTranscript || 'User finished speaking'
         }));
+        userTranscript = '';
+        // Agent is connected — DON'T let OpenAI respond, wait for agent
+      } else {
+        // No agent connected — use local AI
+        sendToOpenAI({
+          type: 'response.create',
+          response: { instructions: SYSTEM_PROMPT }
+        });
       }
-      userTranscript = '';
-
-      sendToOpenAI({
-        type: 'response.create',
-        response: { instructions: SYSTEM_PROMPT }
-      });
     } else if (data.type === 'text') {
       userTranscript += data.delta || '';
     } else if (data.type === 'ping') {
