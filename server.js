@@ -40,10 +40,33 @@ wss.on('connection', (ws, req) => {
     console.log('🤖 AI Agent connected from sandbox');
     agentWs = ws;
 
-    ws.on('message', (raw) => {
+    ws.on('message', async (raw) => {
       const data = JSON.parse(raw.toString());
       if (data.type === 'agent_response') {
         console.log('💬 Agent response received');
+      }
+      if (data.type === 'agent_initiated') {
+        console.log('🤖 Agent initiated message:', data.text?.substring(0, 60));
+        // Convert agent's text to speech using British male voice and push to browser
+        try {
+          const ttsResp = await fetch('https://api.openai.com/v1/audio/speech', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${OPENAI_KEY}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: 'gpt-4o-mini-tts', input: data.text, voice: 'echo', response_format: 'pcm16' })
+          });
+          if (ttsResp.ok) {
+            const audioBuffer = await ttsResp.arrayBuffer();
+            const base64 = Buffer.from(audioBuffer).toString('base64');
+            // Broadcast to all browser connections
+            wss.clients.forEach(client => {
+              if (client !== ws && client.readyState === WebSocket.OPEN) {
+                client.send(JSON.stringify({ type: 'text', delta: data.text }));
+                client.send(JSON.stringify({ type: 'audio', delta: base64 }));
+                client.send(JSON.stringify({ type: 'audio_done' }));
+              }
+            });
+          }
+        } catch(e) { console.error('TTS error:', e.message); }
       }
     });
 
@@ -78,11 +101,7 @@ wss.on('connection', (ws, req) => {
     const data = JSON.parse(raw.toString());
 
     if (data.type === 'session.created') {
-      // Send a welcome greeting
-      openaiWs.send(JSON.stringify({
-        type: 'response.create',
-        response: { instructions: 'Greet Jim briefly. Mention you have a direct line to the AI operations center (the lead agent).' }
-      }));
+      // Don't auto-greet — wait for agent or user
     }
 
     if (data.type === 'response.output_audio.delta') {
