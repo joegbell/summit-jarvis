@@ -52,7 +52,7 @@ wss.on('connection', (ws, req) => {
           const ttsResp = await fetch('https://api.openai.com/v1/audio/speech', {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${OPENAI_KEY}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: 'tts-1', input: data.text, voice: 'echo', response_format: 'wav' })
+            body: JSON.stringify({ model: 'tts-1', input: data.text, voice: 'onyx', response_format: 'wav' })
           });
           if (ttsResp.ok) {
             const buf = Buffer.from(await ttsResp.arrayBuffer());
@@ -104,7 +104,8 @@ wss.on('connection', (ws, req) => {
     const data = JSON.parse(raw.toString());
 
     if (data.type === 'session.created') {
-      // Don't auto-greet — wait for agent or user
+      // Disable auto-response — agent bridge handles all speech
+      sendToOpenAI({ type: 'session.update', session: { turn_detection: null } });
     }
 
     if (data.type === 'response.output_audio.delta') {
