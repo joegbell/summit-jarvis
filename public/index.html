@@ -242,8 +242,8 @@
 
     // Audio playback with PCM16 -> AudioBuffer
     function initAudioContext() {
-      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (audioCtx.state === 'suspended') audioCtx.resume();
+      if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioContext.state === 'suspended') audioContext.resume();
     }
 
     function playPCM16(base64Data) {
