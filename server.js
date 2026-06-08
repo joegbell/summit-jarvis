@@ -103,8 +103,7 @@ wss.on('connection', (ws, req) => {
     const data = JSON.parse(raw.toString());
 
     if (data.type === 'session.created') {
-      // Disable auto-response — agent bridge handles all speech
-      sendToOpenAI({ type: 'session.update', session: { turn_detection: null } });
+      // Session auto-created — no config changes needed
     }
 
     if (data.type === 'response.output_audio.delta') {
