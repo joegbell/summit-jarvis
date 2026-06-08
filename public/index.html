@@ -233,7 +233,7 @@
 
   <script>
     const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
-    let ws = null, audioCtx = null, stream = null;
+    let ws = null, audioContext = null, stream = null;
     let isRecording = false, isPlaying = false;
     let audioQueue = [];
     let isHandsFree = false;
@@ -255,11 +255,11 @@
         const pcm16 = new Int16Array(bytes.buffer);
         const float32 = new Float32Array(pcm16.length);
         for (let i = 0; i < pcm16.length; i++) float32[i] = pcm16[i] / 32768;
-        const buf = audioCtx.createBuffer(1, float32.length, 24000);
+        const buf = audioContext.createBuffer(1, float32.length, 24000);
         buf.getChannelData(0).set(float32);
-        const src = audioCtx.createBufferSource();
+        const src = audioContext.createBufferSource();
         src.buffer = buf;
-        src.connect(audioCtx.destination);
+        src.connect(audioContext.destination);
         src.onended = () => { isPlaying = false; playNext(); };
         src.start();
         isPlaying = true;
@@ -385,8 +385,8 @@
         stream = await navigator.mediaDevices.getUserMedia({
           audio: { sampleRate: 24000, channelCount: 1, echoCancellation: true, noiseSuppression: true }
         });
-        const src = audioCtx.createMediaStreamSource(stream);
-        const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+        const src = audioContext.createMediaStreamSource(stream);
+        const processor = audioContext.createScriptProcessor(4096, 1, 1);
 
         processor.onaudioprocess = (e) => {
           if (ws?.readyState !== WebSocket.OPEN) return;
@@ -404,7 +404,7 @@
         };
 
         src.connect(processor);
-        processor.connect(audioCtx.destination);
+        processor.connect(audioContext.destination);
         isRecording = true;
         return true;
       } catch (err) {
