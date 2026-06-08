@@ -332,14 +332,23 @@
       ws.onmessage = (e) => {
         const data = JSON.parse(e.data);
         if (data.type === 'play_audio') {
-          // Play audio from data URL (agent bridge TTS)
+          // Play audio from data URL via AudioContext (bypasses autoplay policy)
           initAudioContext();
-          const audio = new Audio(data.url);
-          audio.play().catch(e => console.log('Audio play error:', e));
-          setStatus('thinking', 'Summit speaking...');
-          audio.onended = () => {
-            setStatus('connected', isHandsFree ? 'Listening...' : 'Hold to talk');
-          };
+          try {
+            const binary = atob(data.url.split(',')[1]);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            audioContext.decodeAudioData(bytes.buffer, (audio) => {
+              const source = audioContext.createBufferSource();
+              source.buffer = audio;
+              source.connect(audioContext.destination);
+              source.onended = () => {
+                setStatus('connected', isHandsFree ? 'Listening...' : 'Hold to talk');
+              };
+              source.start();
+              setStatus('thinking', 'Summit speaking...');
+            }, (err) => console.log('Decode error:', err));
+          } catch(e) { console.log('Play error:', e); }
         } else if (data.type === 'audio') {
           audioQueue.push(data.delta);
           if (!isPlaying) playNext();
