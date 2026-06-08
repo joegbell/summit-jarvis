@@ -134,8 +134,9 @@ wss.on('connection', (ws, req) => {
 
       // Forward transcript to connected agent
       if (agentWs && agentWs.readyState === 1) {
-        // Cancel any OpenAI response — only agent should speak
+        // Cancel any OpenAI response and clear buffer — only agent should speak
         sendToOpenAI({ type: 'response.cancel' });
+        sendToOpenAI({ type: 'input_audio_buffer.clear' });
         agentWs.send(JSON.stringify({
           type: 'user_query',
           text: userTranscript || 'User finished speaking'
