@@ -331,7 +331,16 @@
       };
       ws.onmessage = (e) => {
         const data = JSON.parse(e.data);
-        if (data.type === 'audio') {
+        if (data.type === 'play_audio') {
+          // Play audio from data URL (agent bridge TTS)
+          initAudioContext();
+          const audio = new Audio(data.url);
+          audio.play().catch(e => console.log('Audio play error:', e));
+          setStatus('thinking', 'Summit speaking...');
+          audio.onended = () => {
+            setStatus('connected', isHandsFree ? 'Listening...' : 'Hold to talk');
+          };
+        } else if (data.type === 'audio') {
           audioQueue.push(data.delta);
           if (!isPlaying) playNext();
           setStatus('thinking', 'Summit speaking...');
