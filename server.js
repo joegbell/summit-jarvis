@@ -104,7 +104,13 @@ wss.on('connection', (ws, req) => {
     const data = JSON.parse(raw.toString());
 
     if (data.type === 'session.created') {
-      // Session auto-created — no config changes needed
+      // Configure VAD with very high threshold so it never auto-responds
+      sendToOpenAI({
+        type: 'session.update',
+        session: {
+          turn_detection: { type: 'server_vad', threshold: 0.99, silence_duration_ms: 60000 }
+        }
+      });
     }
 
     if (data.type === 'response.output_audio.delta') {
@@ -134,15 +140,12 @@ wss.on('connection', (ws, req) => {
 
       // Forward transcript to connected agent
       if (agentWs && agentWs.readyState === 1) {
-        // Cancel any OpenAI response and clear buffer — only agent should speak
-        sendToOpenAI({ type: 'response.cancel' });
-        sendToOpenAI({ type: 'input_audio_buffer.clear' });
+        // Agent connected — forward transcript, VAD won't auto-respond
         agentWs.send(JSON.stringify({
           type: 'user_query',
           text: userTranscript || 'User finished speaking'
         }));
         userTranscript = '';
-        // Agent is connected — DON'T let OpenAI respond, wait for agent
       } else {
         // No agent connected — use local AI
         sendToOpenAI({
