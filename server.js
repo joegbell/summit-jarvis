@@ -56,14 +56,15 @@ wss.on('connection', (ws, req) => {
           });
           if (ttsResp.ok) {
             const buf = Buffer.from(await ttsResp.arrayBuffer());
-            const dataUrl = 'data:audio/wav;base64,' + buf.toString('base64');
+            const filename = 'speech-' + Date.now() + '.wav';
+            require('fs').writeFileSync(path.join(__dirname, 'public', filename), buf);
             wss.clients.forEach(client => {
               if (client !== ws && client.readyState === WebSocket.OPEN) {
                 client.send(JSON.stringify({ type: 'text', delta: data.text }));
-                client.send(JSON.stringify({ type: 'play_audio', url: dataUrl }));
+                client.send(JSON.stringify({ type: 'play_audio_url', url: '/' + filename }));
               }
             });
-            console.log('🔊 Spoken to browser via data URL');
+            console.log('🔊 Spoken to browser via file:', filename);
           } else {
             const errText = await ttsResp.text();
             console.error('TTS API error:', errText.substring(0, 200));

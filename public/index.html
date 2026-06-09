@@ -331,21 +331,14 @@
       };
       ws.onmessage = (e) => {
         const data = JSON.parse(e.data);
-        if (data.type === 'play_audio') {
-          // Play audio from data URL via blob URL (works on all browsers)
+        if (data.type === 'play_audio_url') {
+          // Play audio from server file URL
           try {
-            const base64 = data.url.split(',')[1];
-            const binary = atob(base64);
-            const bytes = new Uint8Array(binary.length);
-            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-            const blob = new Blob([bytes], { type: 'audio/wav' });
-            const blobUrl = URL.createObjectURL(blob);
-            const audio = new Audio(blobUrl);
+            const audio = new Audio(data.url);
             audio.play().then(() => {
               setStatus('thinking', 'Summit speaking...');
             }).catch(e => console.log('Audio play denied:', e));
             audio.onended = () => {
-              URL.revokeObjectURL(blobUrl);
               setStatus('connected', isHandsFree ? 'Listening...' : 'Hold to talk');
             };
           } catch(e) { console.log('Audio error:', e); }
