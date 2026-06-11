@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#f59e0b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="manifest.json">
+  <title>Summit J.A.R.V.I.S.</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, 'Segoe UI', system-ui, sans-serif;
+      background: #0a0a1a;
+      color: #e0e0e0;
+      min-height: 100vh; min-height: 100dvh;
+      overflow: hidden;
+      user-select: none; -webkit-user-select: none;
+    }
+    .container {
+      height: 100vh; height: 100dvh;
+      display: flex; flex-direction: column;
+      padding: 20px;
+    }
+    .hud-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(245, 158, 11, 0.15);
+    }
+    .hud-title {
+      font-size: 14px; font-weight: 600; letter-spacing: 2px;
+      text-transform: uppercase;
+      background: linear-gradient(90deg, #f59e0b, #eab308);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .hud-status { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #666; }
+    .hud-dot { width: 6px; height: 6px; border-radius: 50%; }
+    .hud-dot.on { background: #22c55e; box-shadow: 0 0 8px rgba(34,197,94,0.5); animation: pulse 2s infinite; }
+    .hud-dot.listening { background: #ef4444; box-shadow: 0 0 12px rgba(239,68,68,0.6); animation: pulse 0.8s infinite; }
+    .hud-dot.thinking { background: #f59e0b; box-shadow: 0 0 12px rgba(245,158,11,0.6); animation: pulse 0.5s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .conversation { flex: 1; overflow-y: auto; margin: 12px -4px; padding: 8px 4px; scroll-behavior: smooth; }
+    .conversation::-webkit-scrollbar { width: 3px; }
+    .conversation::-webkit-scrollbar-thumb { background: rgba(245,158,11,0.3); border-radius: 3px; }
+    .msg { margin-bottom: 12px; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .msg-user { text-align: right; }
+    .msg-agent { text-align: left; }
+    .msg-bubble { display: inline-block; max-width: 85%; padding: 10px 14px; border-radius: 14px; font-size: 14px; line-height: 1.5; text-align: left; }
+    .msg-user .msg-bubble { background: linear-gradient(135deg, #1e3a5f, #1a365d); color: #c8d8e8; border-bottom-right-radius: 4px; }
+    .msg-agent .msg-bubble { background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.15); color: #d4d4d4; border-bottom-left-radius: 4px; }
+    .msg-label { font-size: 10px; color: #555; margin-bottom: 3px; letter-spacing: 1px; }
+    .voice-section { display: flex; flex-direction: column; align-items: center; padding: 16px 0 8px; }
+    .voice-btn { width: 80px; height: 80px; border-radius: 50%; border: none; background: linear-gradient(135deg, #1a1a3e, #0f0f2e); cursor: pointer; transition: all 0.2s; box-shadow: 0 0 30px rgba(245,158,11,0.1); }
+    .voice-btn:active { transform: scale(0.95); }
+    .voice-btn.active { background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 0 60px rgba(245,158,11,0.3); }
+    .voice-btn .icon { font-size: 32px; }
+    .voice-hint { margin-top: 12px; font-size: 12px; color: #555; letter-spacing: 1px; }
+    .voice-hint.active { color: #f59e0b; }
+    .hf-toggle { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 11px; color: #555; }
+    .hf-toggle input[type="checkbox"] { appearance: none; width: 36px; height: 20px; background: #1a1a3e; border-radius: 10px; border: 1px solid #333; cursor: pointer; position: relative; transition: all 0.3s; }
+    .hf-toggle input:checked { background: #1e3a5f; border-color: #f59e0b; }
+    .hf-toggle input::after { content: ''; position: absolute; top: 1px; left: 1px; width: 16px; height: 16px; border-radius: 50%; background: #555; transition: all 0.3s; }
+    .hf-toggle input:checked::after { left: 17px; background: #f59e0b; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="hud-header">
+      <span class="hud-title">⛰ SUMMIT // J.A.R.V.I.S.</span>
+      <div class="hud-status">
+        <span class="hud-dot" id="statusDot"></span>
+        <span id="statusText">Initializing</span>
+      </div>
+    </div>
+    <div class="conversation" id="conversation">
+      <div class="msg msg-agent">
+        <div class="msg-label">SUMMIT</div>
+        <div class="msg-bubble">Good to see you, sir. Tap the mic and speak to me directly.</div>
+      </div>
+    </div>
+    <div class="voice-section">
+      <button class="voice-btn" id="voiceBtn">
+        <span class="icon">🎤</span>
+      </button>
+      <div class="voice-hint" id="voiceHint">Tap to speak</div>
+      <div class="hf-toggle">
+        <input type="checkbox" id="handsFreeToggle">
+        <label for="handsFreeToggle">Hands-free (auto-detect)</label>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host;
+    let ws = null, recognition = null, isListening = false, handsFree = false, restartTimer = null;
+
+    const conversation = document.getElementById('conversation');
+    const voiceBtn = document.getElementById('voiceBtn');
+    const voiceHint = document.getElementById('voiceHint');
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('statusText');
+    const handsFreeToggle = document.getElementById('handsFreeToggle');
+
+    function setStatus(state, text) {
+      statusDot.className = 'hud-dot ' + state;
+      statusText.textContent = text;
+    }
+
+    function addMessage(text, isUser) {
+      const div = document.createElement('div');
+      div.className = `msg msg-${isUser ? 'user' : 'agent'}`;
+      div.innerHTML = `<div class="msg-label">${isUser ? 'YOU' : 'SUMMIT'}</div><div class="msg-bubble">${text}</div>`;
+      conversation.appendChild(div);
+      conversation.scrollTop = conversation.scrollHeight;
+    }
+
+    // WebSocket
+    function connect() {
+      ws = new WebSocket(WS_URL);
+      ws.onopen = () => { setStatus('on', 'Connected'); voiceBtn.disabled = false; };
+      ws.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        if (data.type === 'agent_response') {
+          addMessage(data.text, false);
+          if (data.audio) {
+            const audioBytes = atob(data.audio);
+            const arrayBuffer = new ArrayBuffer(audioBytes.length);
+            const view = new Uint8Array(arrayBuffer);
+            for (let i = 0; i < audioBytes.length; i++) {
+              view[i] = audioBytes.charCodeAt(i);
+            }
+            const blob = new Blob([arrayBuffer], { type: 'audio/mpeg' });
+            const url = URL.createObjectURL(blob);
+            const audio = new Audio(url);
+            audio.play().catch(e => console.log('Audio play error:', e));
+            setStatus('thinking', 'Speaking...');
+            audio.onended = () => {
+              URL.revokeObjectURL(url);
+              setStatus('on', 'Connected');
+              if (handsFree) startListening();
+            };
+          } else {
+            setStatus('on', 'Connected');
+            if (handsFree) startListening();
+          }
+        } else if (data.type === 'error') {
+          setStatus('on', 'Error');
+        }
+      };
+      ws.onclose = () => {
+        setStatus('', 'Reconnecting...');
+        voiceBtn.disabled = true;
+        if (!restartTimer) restartTimer = setTimeout(() => { restartTimer = null; connect(); }, 2000);
+      };
+    }
+
+    // Speech Recognition
+    function initSpeech() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) { voiceHint.textContent = 'Speech not supported in this browser'; return false; }
+      recognition = new SpeechRecognition();
+      recognition.lang = 'en-US';
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.maxAlternatives = 1;
+
+      recognition.onresult = (event) => {
+        let finalText = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          if (event.results[i].isFinal) finalText += event.results[i][0].transcript;
+        }
+        if (finalText) {
+          addMessage(finalText, true);
+          if (ws?.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'user_text', text: finalText }));
+          }
+        }
+      };
+
+      recognition.onerror = (event) => {
+        console.log('Speech error:', event.error);
+        if (event.error === 'no-speech') {
+          if (handsFree) { recognition.stop(); setTimeout(startListening, 500); }
+          return;
+        }
+        stopListening();
+      };
+
+      recognition.onend = () => {
+        isListening = false;
+        voiceBtn.classList.remove('active');
+        voiceBtn.querySelector('.icon').textContent = '🎤';
+        if (handsFree && !isListening) startListening();
+      };
+      return true;
+    }
+
+    function startListening() {
+      if (!recognition) return;
+      try {
+        recognition.start();
+        isListening = true;
+        voiceBtn.classList.add('active');
+        voiceBtn.querySelector('.icon').textContent = '🔴';
+        voiceHint.textContent = handsFree ? 'Listening...' : 'Speak now...';
+        voiceHint.classList.add('active');
+        setStatus('listening', 'Listening');
+      } catch(e) {}
+    }
+
+    function stopListening() {
+      if (!recognition) return;
+      try { recognition.stop(); } catch(e) {}
+      isListening = false;
+      voiceBtn.classList.remove('active');
+      voiceBtn.querySelector('.icon').textContent = '🎤';
+      voiceHint.textContent = handsFree ? 'Hands-free' : 'Tap to speak';
+      voiceHint.classList.remove('active');
+      setStatus('on', 'Connected');
+    }
+
+    // Button events
+    voiceBtn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      if (handsFree) return;
+      startListening();
+    });
+    voiceBtn.addEventListener('pointerup', () => { if (!handsFree) stopListening(); });
+    voiceBtn.addEventListener('pointerleave', () => { if (isListening && !handsFree) stopListening(); });
+
+    handsFreeToggle.addEventListener('change', () => {
+      handsFree = handsFreeToggle.checked;
+      if (handsFree) { voiceHint.textContent = 'Hands-free'; startListening(); }
+      else { stopListening(); voiceHint.textContent = 'Tap to speak'; }
+    });
+
+    // Service worker
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('service-worker.js');
+
+    if (initSpeech()) connect();
+    setInterval(() => { if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ping' })); }, 30000);
+  </script>
+</body>
+</html>
